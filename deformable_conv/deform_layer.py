@@ -7,23 +7,21 @@ class DeformableConv2D(object):
     def __init__(self, filters, use_seperate_conv=True, **kwargs):
         self.filters = filters
         if use_seperate_conv:
-            self.conv = keras.layers.SeparableConv2D(filters=self.filters, kernel_size=(3, 3), padding='same', **kwargs)
             self.offset_conv = keras.layers.SeparableConv2D(filters=filters * 2, kernel_size=(3, 3), padding='same',
                                                    use_bias=False)
             self.weight_conv = keras.layers.SeparableConv2D(filters=filters, kernel_size=(3, 3), padding="same",
                                                    use_bias=False, activation=tf.nn.sigmoid)
         else:
-            self.conv = keras.layers.Conv2D(filters=self.filters, kernel_size=(3, 3), padding='same', **kwargs)
             self.offset_conv = keras.layers.Conv2D(filters=filters*2, kernel_size=(3, 3), padding='same',
                                                    use_bias=False)
             self.weight_conv = keras.layers.Conv2D(filters=filters, kernel_size=(3, 3), padding="same",
                                                    use_bias=False, activation=tf.nn.sigmoid)
 
-    def __call__(self, input):
-        offsets = self.offset_conv(input)
-        weights = self.weight_conv(input)
-        x = self.conv(input)
+    def __call__(self, x):
+        offsets = self.offset_conv(x)
+        weights = self.weight_conv(x)
         x_shape = tf.shape(x)
+        x_shape_list = x.get_shape().as_list()
         x = self._to_bc_h_w(x, x_shape)
         offsets = self._to_bc_h_w_2(offsets, x_shape)
         weights = self._to_bc_h_w(weights, x_shape)
@@ -32,7 +30,7 @@ class DeformableConv2D(object):
         weights = self._to_b_h_w_c(weights, x_shape)
         x_offset = self._to_b_h_w_c(x_offset, x_shape)
         x_offset = tf.multiply(x_offset, weights)
-        x_offset.set_shape([None, None, None, self.filters])
+        x_offset.set_shape(x_shape_list)
         return x_offset
 
     @staticmethod
